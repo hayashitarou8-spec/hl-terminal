@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: hl-terminal
+    runtime: docker
+    plan: free
+    region: singapore
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: ACCESS_TOKEN
+        sync: false   # entered by the user in Render's secret field
+      - key: XAI_API_KEY
+        sync: false   # optional; leave blank for rule-based 考察

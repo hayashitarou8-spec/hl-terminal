@@ -1,0 +1,8 @@
+.venv
+shots
+*.log
+.access_token
+.env
+__pycache__
+*.tgz
+.git
