@@ -56,6 +56,8 @@ def rule_text(F):
     if mc["cpi_yoy"] is not None: mm.append(f"CPI前年比{mc['cpi_yoy']:.2f}%（{mc['cpi_date']}分）")
     if mc["ff"] is not None: mm.append(f"FF金利{mc['ff']:.2f}%")
     L.append("マクロ: " + ("、".join(mm) if mm else "データ取得不可") + f"。次回FOMCは{mc['fomc']}で、それまでは金利・ドル高がリスク資産の重しになりやすい。")
+    et = etf_line(F)
+    if et: L.append(et)
     if F.get("fng"): L.append(f"センチメント: Fear & Greed {F['fng']['value']}（{F['fng']['label']}、{F['fng']['date']}）。")
     if F.get("geo"):
         L.append("地政学・ヘッドライン（見出しベース、内容未検証）:")
@@ -68,8 +70,19 @@ def rule_text(F):
     L.append("### 避けたい銘柄")
     if not F["avoid"]: L.append("特になし。")
     for a in F["avoid"]: L.append(f"- {a['sym']}: {'・'.join(a['why'])}（資金調達 年率{sg(a['ann'])}、OI ${a['oi']/1e6:.1f}M）")
-    L.append("※ 分析用・投資助言ではない。数値はHyperliquid/FRED/Yahoo/DefiLlamaの取得値。")
+    L.append("※ 分析用・投資助言ではない。数値はHyperliquid/FRED/Yahoo/DefiLlama/Farsideの取得値。")
     return "\n".join(L)
+
+def etf_line(F):
+    E = F.get("etf") or {}; parts = []
+    for k in ("BTC", "ETH"):
+        e = E.get(k)
+        if not e or e.get("latest") is None: continue
+        d = "流入" if e["latest"] > 0 else "流出" if e["latest"] < 0 else "ゼロ"
+        p = f"{k} {e['latest']:+,.1f}（{d}・{e['date']}）、直近{e['days5']}日計{e['sum5']:+,.1f}"
+        if abs(e.get("streak") or 0) >= 3: p += f"、{abs(e['streak'])}日連続{'流入' if e['streak'] > 0 else '流出'}"
+        parts.append(p)
+    return ("現物ETFフロー（米国・US$m・Farside）: " + "／".join(parts) + "。") if parts else None
 
 def grok_text(F):
     key = os.environ.get("XAI_API_KEY")
@@ -113,6 +126,9 @@ def summary(F):
             for t in g["tags"]:
                 if t not in tags: tags.append(t)
         w.append("地政学ヘッドライン(" + "/".join(tags[:3]) + ")")
+    E = F.get("etf") or {}
+    ef = [f"{k} {E[k]['sum5']:+,.0f}M" for k in ("BTC", "ETH") if E.get(k) and E[k].get("sum5") is not None]
+    if ef: s2 = "ETF5日計 " + " / ".join(ef); out[0] += "、" + s2
     if F["avoid"]: w.append("回避: " + "・".join(a["sym"].replace("xyz:", "") for a in F["avoid"][:3]))
     w.append(f"次回FOMC {F['macro']['fomc']}")
     out.append("注意：" + "／".join(w))

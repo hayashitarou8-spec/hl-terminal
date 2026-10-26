@@ -119,6 +119,22 @@ nav.bottom a{font-size:10px;letter-spacing:.1px}
 .cv{display:flex;align-items:flex-end;gap:6px;height:44px;margin:12px 0 6px}.cv i{flex:1;border-radius:6px 6px 2px 2px;background:linear-gradient(180deg,var(--C),rgba(61,232,255,.15))}
 @media(max-width:760px){.ptitle h1{font-size:28px}.g2m{grid-template-columns:1fr 1fr}.mrows{grid-template-columns:1fr}}
 @media(max-width:360px){.g2m{grid-template-columns:1fr}}
+/* ===== v5 ETF flows ===== */
+.esum{display:flex;gap:8px;overflow-x:auto;padding:2px 16px 4px;margin:0 -16px 12px;scrollbar-width:none}.esum::-webkit-scrollbar{display:none}
+.es{flex:1 1 0;min-width:78px;padding:10px 11px;border-radius:16px;background:linear-gradient(180deg,rgba(21,30,49,.75),rgba(10,15,26,.75));box-shadow:inset 0 0 0 1px var(--line)}.es .k{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:var(--t2);letter-spacing:.6px}.es .k i{width:8px;height:8px;border-radius:50%;background:var(--ac);box-shadow:0 0 8px var(--ac)}.es .v{font:700 14.5px "JetBrains Mono";white-space:nowrap;margin-top:4px;letter-spacing:-.5px}.es .d{font-size:10px;color:var(--t3);font-weight:600}
+.egrid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+.ec{position:relative;padding:18px 18px 14px;border-radius:24px;background:linear-gradient(180deg,#121a2c,#090d17);overflow:hidden;box-shadow:inset 0 0 0 1px var(--line),0 20px 40px -20px rgba(0,0,0,.7)}
+.ec::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(80% 55% at 100% 0%,var(--glow,transparent),transparent 70%);opacity:.6}
+.ec.in{--glow:rgba(44,255,154,.2)}.ec.out{--glow:rgba(255,59,122,.22)}.ec>*{position:relative}
+.ec .eh{display:flex;align-items:center;gap:10px}.ec .ab{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;font:900 12px Inter;color:#020409;background:var(--ac);box-shadow:0 0 18px var(--acg)}
+.ec .enm{font-size:16px;font-weight:800;line-height:1.15}.ec .enm small{display:block;font-size:11px;color:var(--t3);font-weight:600;margin-top:1px}.ec .eh .pill{margin-left:auto}
+.ec .ev2{display:flex;align-items:baseline;gap:10px;margin-top:14px;flex-wrap:wrap}.ec .bigv{font:800 36px/1 "JetBrains Mono";letter-spacing:-1.4px}.ec .bigv small{font-size:16px;margin-left:2px;opacity:.75}.ec .dt{font-size:12px;color:var(--t2);font-weight:600}
+.ebars{margin:14px 0 2px}.ebars svg{display:block;width:100%;height:84px}.ebl{display:flex;justify-content:space-between;font:500 10.5px "JetBrains Mono";color:var(--t3)}
+.est{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}.est div{padding:10px 11px;border-radius:14px;background:rgba(140,160,200,.07)}.est small{display:block;font-size:10px;font-weight:800;color:var(--t3);letter-spacing:.8px}.est b{font:700 15px "JetBrains Mono";letter-spacing:-.4px;white-space:nowrap}.est small{white-space:nowrap}@media(min-width:1000px){.est{gap:6px}.est div{padding:9px 8px}.est b{font-size:13px}.est small{font-size:9.5px;letter-spacing:.3px}}
+.efl{margin-top:12px}.efl .lt{font-size:10.5px;font-weight:800;color:var(--t3);letter-spacing:1px;margin-bottom:6px}.efl .chips{gap:6px}.fc{display:inline-flex;gap:6px;align-items:baseline;padding:5px 10px;border-radius:10px;background:rgba(140,160,200,.08);font-size:12px;font-weight:700}.fc b{font:600 12px "JetBrains Mono"}.fc.up{background:rgba(44,255,154,.09)}.fc.dn{background:rgba(255,59,122,.1)}.fc span{color:var(--t2)}
+.ec .ft{display:flex;justify-content:space-between;gap:8px;margin-top:12px;font-size:10.5px;color:var(--t3)}
+.ec.na .bigv{font-size:20px;color:var(--r)}
+@media(max-width:760px){.egrid{grid-template-columns:1fr}.ec .bigv{font-size:34px}}
 </style></head><body>
 <header><div class="hrow"><div class="logo"><img src="/icon.png" alt=""><span>HL<b>Terminal</b></span></div><nav class="top" id="ntop"></nav><div class="status"><span class="live"></span><span id="upd">接続中…</span></div></div>
 <div class="ticker"><div class="track" id="tick"></div></div></header>
@@ -141,7 +157,12 @@ nav.bottom a{font-size:10px;letter-spacing:.1px}
  <div class="filters" id="filt"></div><div class="filters" id="sorts" style="padding-top:0"></div>
  <div class="sgrid" id="slist"><div class="sc sk" style="height:250px"></div><div class="sc sk" style="height:250px"></div></div>
  <p class="sub" style="margin-top:18px;line-height:1.7">ルール: 4h EMA20/50でトレンド → 7日高値圏＋上昇=ブレイク / 4h RSI&lt;25＋資金調達年率&lt;-30%=踏み上げ候補 / 1h RSI&lt;25＋7日安値付近=売られすぎ反発 / 下降=戻り売り / 上昇=押し目買い。エントリー・損切り・利確は ATR(4h,14) とEMA20から機械的に算出、確信度は資金調達・RSI・ATR・RRで±0.05調整。ラダー: 損切り〜エントリー帯〜現在値〜利確を実スケールで表示。</p></section>
-<section id="s-flow"><div class="ptitle"><h1>Flow</h1><span>資金調達・需給 · <span id="flowts"></span></span></div><div class="tw mhide"><table id="tflow"></table></div><div class="mlist" id="mflow"></div></section>
+<section id="s-flow"><div class="ptitle"><h1>Flow</h1><span>現物ETFフロー・資金調達・需給</span></div>
+ <div class="h" style="margin-top:8px"><h2>Spot ETF Flows · 現物ETF</h2><span class="ts" id="etfts"></span></div>
+ <div class="esum" id="esum"><div class="sk" style="height:62px;flex:1"></div></div>
+ <div class="egrid" id="etf"><div class="ec sk" style="height:330px"></div><div class="ec sk" style="height:330px"></div></div>
+ <div class="sub" style="margin:10px 2px 0;line-height:1.7">米国上場の現物ETFの日次ネットフロー（US$m・Farside Investors集計）。米国営業日ベースで、通常は翌朝(JST)に前営業日分が反映。0.0 はフローなし。</div>
+ <div class="h"><h2>Funding · 資金調達・建玉</h2><span class="ts" id="flowts"></span></div><div class="tw mhide"><table id="tflow"></table></div><div class="mlist" id="mflow"></div></section>
 <section id="s-mac"><div class="ptitle"><h1>Macro</h1><span>金利・ドル・インフレ・リスク・コモディティ</span></div>
  <div class="card hero rise" id="rhero"><div class="sk" style="height:260px"></div></div>
  <div class="g2m"><div class="card rise" id="fomc" style="animation-delay:.06s"><div class="sk" style="height:120px"></div></div><div class="card rise" id="curve" style="animation-delay:.1s"><div class="sk" style="height:120px"></div></div></div>
@@ -158,7 +179,7 @@ nav.bottom a{font-size:10px;letter-spacing:.1px}
  <div class="h"><h2>HIP-3 株パーペ（xyz）</h2></div><div class="tw mhide"><table id="txyz"></table></div><div class="mlist" id="mxyz"></div>
 </section>
 </main>
-<footer>データソース: Hyperliquid Info API ／ FRED ／ Yahoo Finance ／ DefiLlama ／ ForexFactory(faireconomy.media) ／ alternative.me ／ Farside Investors ／ BBC・Google News・CoinDesk・The Block・Cointelegraph RSS。キャッシュ: 市場30〜60秒、マクロ30分、ニュース15分。ニュースのリスクタグ・影響ヒントは見出しのキーワード判定で、内容は未検証。<br><span class="warn">分析用・投資助言ではない。</span> 取得失敗時は「データ取得不可」と表示し、推定値は表示しません。読み取り専用・取引機能なし。</footer>
+<footer>データソース: Hyperliquid Info API ／ FRED ／ Yahoo Finance ／ DefiLlama ／ ForexFactory(faireconomy.media) ／ alternative.me ／ Farside Investors（BTC/ETH/SOL/HYPE 現物ETF）／ BBC・Google News・CoinDesk・The Block・Cointelegraph RSS。キャッシュ: 市場30〜60秒、マクロ30分、ETFフロー40分、ニュース15分。ニュースのリスクタグ・影響ヒントは見出しのキーワード判定で、内容は未検証。<br><span class="warn">分析用・投資助言ではない。</span> 取得失敗時は「データ取得不可」と表示し、推定値は表示しません。読み取り専用・取引機能なし。</footer>
 <div class="sheet" id="sheet"><div class="bd" onclick="closeSheet()"></div><div class="pn" id="spn"><div class="grab"></div><button class="xbtn" onclick="closeSheet()">×</button><div id="sbody"></div></div></div>
 <nav class="bottom" id="nbot"></nav>
 <script>
@@ -313,7 +334,29 @@ async function fund(){const d=await j('/api/fundamentals');$('funts').textConten
  $('txyz').innerHTML='<thead><tr><th>銘柄</th><th>価格</th><th>24h</th><th>24h出来高</th><th>建玉</th><th>資金調達年率</th><th>最大レバ</th></tr></thead><tbody>'+d.xyzList.map(r=>`<tr><td><b>${r.sym}</b></td><td class="num">${px(r.mark)}</td><td class="num">${pc(r.chg)}</td><td class="num">${usd(r.vol)}</td><td class="num">${usd(r.oi)}</td><td class="num" style="${heat(r.ann)}">${r.ann.toFixed(1)}%</td><td class="num">${r.maxLev??'-'}x</td></tr>`).join('')+'</tbody>';
  $('mxyz').innerHTML=d.xyzList.slice(0,30).map((r,i)=>`<div class="mc ${i>=10?'more':''}"><div><b>${r.sym.replace('xyz:','')}</b> <span class="sub">${r.maxLev}x</span></div><div style="text-align:right" class="num">${px(r.mark)} ${pc(r.chg)}</div><div class="row num"><span>出来高 <b>${usd(r.vol)}</b></span><span>OI <b>${usd(r.oi)}</b></span><span>資金調達 <b class="${r.ann>=0?'up':'dn'}">${r.ann.toFixed(1)}%</b></span></div></div>`).join('')+`<button class="btn mbtn" onclick="this.parentNode.classList.toggle('showall');this.textContent=this.parentNode.classList.contains('showall')?'閉じる':'もっと見る'">もっと見る</button>`+'<div class="sub">株式の業績・バリュエーション等はHL APIに無いため表示していません。</div>'}
 
+const ETFC={BTC:['#f7931a','rgba(247,147,26,.5)','₿'],ETH:['#8f9bff','rgba(143,155,255,.5)','Ξ'],SOL:['linear-gradient(135deg,#14f195,#9945ff)','rgba(153,69,255,.5)','S'],HYPE:['linear-gradient(135deg,#97fce4,#3de8ff)','rgba(61,232,255,.5)','H']};
+const fM=(v,d=1)=>v==null?'—':(v>0?'+':v<0?'−':'±')+'$'+(Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(2)+'B':Math.abs(v).toFixed(d)+'M');
+const ucl=v=>v>0?'up':v<0?'dn':'nu';const dow=s=>{const d=new Date(s+'T00:00:00Z');return (d.getUTCMonth()+1)+'/'+d.getUTCDate()+'('+'日月火水木金土'[d.getUTCDay()]+')'};
+function ebars(h){const w=300,H=84,n=h.length,g=4,bw=(w-g*(n-1))/n;const mxp=Math.max(0,...h.map(r=>r.total)),mxn=Math.max(0,...h.map(r=>-r.total));const tot=(mxp+mxn)||1;const z=6+(H-12)*(mxp/tot);
+ const bars=h.map((r,i)=>{const v=r.total,ht=Math.max(Math.abs(v)/tot*(H-12),v==0?0:1.5),x=i*(bw+g),y=v>=0?z-ht:z,last=i==n-1;const c=v>=0?'url(#eg1)':'url(#eg2)';return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${ht.toFixed(1)}" rx="3" fill="${c}" opacity="${last?1:.7}"${last?` stroke="${v>=0?'#8dffc8':'#ff9dbd'}" stroke-width="1.2"`:''}><title>${esc(r.date)} ${fM(v)}</title></rect>`}).join('');
+ return `<svg viewBox="0 0 ${w} ${H}" preserveAspectRatio="none"><defs><linearGradient id="eg1" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2cff9a"/><stop offset="1" stop-color="#2cff9a" stop-opacity=".25"/></linearGradient><linearGradient id="eg2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ff3b7a" stop-opacity=".25"/><stop offset="1" stop-color="#ff3b7a"/></linearGradient></defs><line x1="0" x2="${w}" y1="${z.toFixed(1)}" y2="${z.toFixed(1)}" stroke="rgba(170,180,197,.35)" stroke-width="1" stroke-dasharray="3 3"/>${bars}</svg>`}
+function ecard(k,e){const C=ETFC[k]||['#6f7b90','rgba(0,0,0,0)',k[0]];const head=(pill='')=>`<div class="eh"><div class="ab" style="--ac:${C[0]};--acg:${C[1]}">${C[2]}</div><div class="enm">${esc(k)}<small>${esc(e.label||'')}</small></div>${pill}</div>`;
+ if(!e||!e.ok)return `<div class="ec na">${head()}<div class="ev2"><span class="bigv">${e&&e.none?'該当ETFなし':'データ取得不可'}</span></div><div class="ft"><span>Farside Investors</span></div></div>`;
+ const st=e.streak,sp=Math.abs(st)>=2?`<span class="pill ${st>0?'p-long':'p-short'}">${Math.abs(st)}${e.streakCapped?'+':''}日連続${st>0?'流入':'流出'}</span>`:'';
+ const chips=a=>a.length?`<div class="chips">${a.map(f=>`<span class="fc ${ucl(f.v)}"><span>${esc(f.t)}</span><b class="${ucl(f.v)}">${f.v>0?'+':f.v<0?'−':''}${Math.abs(f.v).toFixed(1)}</b></span>`).join('')}</div>`:'<div class="sub">全ファンド 0.0（フローなし）</div>';
+ const h=e.hist||[];
+ return `<div class="ec ${e.latest>0?'in':e.latest<0?'out':''} rise">${head(sp)}
+ <div class="ev2"><span class="bigv ${ucl(e.latest)}">${fM(e.latest)}</span><span class="dt">${dow(e.date)} 日次ネット</span></div>
+ <div class="ebars">${ebars(h)}<div class="ebl"><span>${h.length?dow(h[0].date):''}</span><span>直近${h.length}営業日</span><span>${h.length?dow(h[h.length-1].date):''}</span></div></div>
+ <div class="est"><div><small>${e.days5}日計</small><b class="${ucl(e.sum5)}">${fM(e.sum5)}</b></div><div><small>上場来累計</small><b class="${ucl(e.cum)}">${e.cum!=null?fM(e.cum,0):'—'}</b></div><div><small>流入/流出日</small><b><span class="up">${h.filter(r=>r.total>0).length}</span><span class="sub"> / </span><span class="dn">${h.filter(r=>r.total<0).length}</span></b></div></div>
+ <div class="efl"><div class="lt">内訳 · 最新日（US$m）</div>${chips(e.topLast||[])}</div>
+ <div class="efl"><div class="lt">内訳 · ${e.days5}日計（US$m）</div>${chips(e.top5||[])}</div>
+ <div class="ft"><span>${esc(e.src)} · ${e.nFunds}本</span><span>${e.stale?'<span class="warn">前回値（再取得失敗）</span>':e.partial?'<span class="warn">一部ファンド未反映</span>':''}</span></div></div>`}
+async function etf(){const d=await j('/api/etf');if(d.pending){$('etfts').textContent='取得中…';setTimeout(()=>safe(etf),8000);return}const A=d.assets||{},K=['BTC','ETH','SOL','HYPE'];
+ $('etfts').textContent='取得 '+jst(d.ts);
+ $('esum').innerHTML=K.map(k=>{const e=A[k],C=ETFC[k];const ok=e&&e.ok;return `<div class="es"><div class="k"><i style="--ac:${C[0].startsWith('linear')?C[0].match(/#\w+/g)[1]:C[0]}"></i>${k}</div><div class="v ${ok?ucl(e.sum5):''}">${ok?fM(e.sum5):'<span class="err" style="font-size:12px">取得不可</span>'}</div><div class="d">${ok?e.days5+'日計':'-'}</div></div>`}).join('');
+ $('etf').innerHTML=K.map(k=>ecard(k,A[k]||{label:k,ok:false})).join('')}
 const safe=f=>f().catch(e=>console.warn(e));
-function all(){safe(tick);safe(ov);safe(btc24);safe(mchips);safe(kos);safe(setups);safe(flows);safe(macro);safe(econ);safe(sent);safe(geo);safe(cal);safe(cnews);safe(fund)}
-all();setInterval(()=>{safe(tick);safe(ov);safe(flows);safe(setups);safe(kos)},60000);setInterval(()=>{safe(btc24);safe(geo);safe(cnews);safe(sent);safe(cal);safe(mchips)},600000);
+function all(){safe(tick);safe(ov);safe(btc24);safe(mchips);safe(kos);safe(setups);safe(flows);safe(etf);safe(macro);safe(econ);safe(sent);safe(geo);safe(cal);safe(cnews);safe(fund)}
+all();setInterval(()=>{safe(tick);safe(ov);safe(flows);safe(setups);safe(kos)},60000);setInterval(()=>{safe(btc24);safe(etf);safe(geo);safe(cnews);safe(sent);safe(cal);safe(mchips)},600000);
 </script></body></html>

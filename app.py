@@ -6,15 +6,24 @@ app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
 import hmac, os
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-TOKEN = os.environ.get("ACCESS_TOKEN", "").strip()
-if len(TOKEN) < 16:
-    raise SystemExit("ACCESS_TOKEN env var is required (>=16 chars). Set it as a host secret.")
+_tok = (os.environ.get("ACCESS_TOKEN") or "").strip()
+_tok_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".access_token")
+if not _tok and os.path.isfile(_tok_file):
+    _tok = open(_tok_file).read().strip()
+if len(_tok) < 16:
+    raise RuntimeError("ACCESS_TOKEN env (or .access_token) required, >=16 chars")
+TOKEN = _tok
+
+@app.get("/healthz")
+def healthz():
+    return {"ok": True}
+
 @app.middleware("http")
 async def gate(request: Request, call_next):
+    if request.url.path in ("/healthz", "/icon.png", "/manifest.webmanifest"):
+        return await call_next(request)
     q = request.query_params.get("t"); c = request.cookies.get("hl_t")
     ok = (q and hmac.compare_digest(q, TOKEN)) or (c and hmac.compare_digest(c, TOKEN))
-    if request.url.path in ("/icon.png", "/manifest.webmanifest", "/healthz"):
-        return await call_next(request)
     if not ok:
         return HTMLResponse("<h1>401</h1><p>アクセストークンが必要です。</p>", status_code=401)
     if q:
@@ -144,19 +153,16 @@ def overview():
 @app.get("/api/setups")
 def setups():
     return _setups()
-def _setups(fresh=False, limit=None):
+def _setups(fresh=False):
     def f():
         out = []
-        U = universe()
-        if limit:  # quick first pass: top-N main + top-4 xyz by volume
-            U = [r for r in U if r["src"] == "main"][:limit] + [r for r in U if r["src"] == "xyz"][:4]
-        for r in U:
+        for r in universe():
             try:
                 x = analyze(r)
                 if x: out.append(x)
             except Exception: pass
             time.sleep(0.3)
-        return {"ts": now_iso(), "rows": out, "partial": bool(limit)}
+        return {"ts": now_iso(), "rows": out}
     if fresh: return f()
     with _lock: v = _cache.get("setups")
     return v[1] if v else {"ts": None, "rows": [], "pending": True}
@@ -253,16 +259,40 @@ def api_cn(): return cached("cnews", 900, lambda: X.news(X.CRYPTO_FEEDS))
 def api_cal(): return cached("cal", 1800, X.calendar)
 @app.get("/api/econ")
 def api_econ(): return cached("econ", 1800, X.econ)
+ETF_TTL = 2400  # 40分
+def _etf_refresh():
+    try:
+        d = X.etf_all()
+        with _lock:
+            old = (_cache.get("etf") or (0, None))[1]
+            if old:  # 個別失敗時は直前の成功値を残す（stale 表示）
+                for k, v in d["assets"].items():
+                    o = old["assets"].get(k)
+                    if not v.get("ok") and o and o.get("ok"): d["assets"][k] = dict(o, stale=True)
+            _cache["etf"] = (time.time(), d)
+    except Exception: pass
+def _etf_loop():
+    while True:
+        _etf_refresh()
+        with _lock: v = _cache.get("etf")
+        bad = not v or any(not a.get("ok") or a.get("stale") for a in v[1]["assets"].values())
+        time.sleep(300 if bad else ETF_TTL)  # 失敗があれば5分後に再試行
+@app.get("/api/etf")
+def api_etf():
+    with _lock: v = _cache.get("etf")
+    return v[1] if v else {"ts": None, "pending": True, "assets": {}}
+def _etf_btc_rows():
+    b = api_etf().get("assets", {}).get("BTC") or {}
+    if not b.get("ok"): return {"error": "データ取得不可"}
+    return {"ts": api_etf().get("ts"), "rows": [{"date": r["date"], "total": r["total"]} for r in b["hist"]], "src": "Farside Investors (US$m)"}
 @app.get("/api/sentiment")
 def api_sent():
     def f():
         out = {"ts": now_iso()}
         try: out["fng"] = X.fng()
         except Exception: out["fng"] = {"error": "データ取得不可"}
-        try: out["etf"] = X.etf()
-        except Exception: out["etf"] = {"error": "データ取得不可"}
         return out
-    return cached("sent", 1200, f)
+    return dict(cached("sent", 1200, f), etf=_etf_btc_rows())
 @app.get("/api/ticker")
 def api_ticker():
     rows = ctxs().get("rows", []); want = ["BTC", "ETH", "HYPE", "SOL", "xyz:SP500", "xyz:GOLD", "xyz:NVDA", "xyz:SILVER"]
@@ -293,6 +323,8 @@ def api_kosatsu(regen: bool = False):
         try:
             sn = api_sent(); F["fng"] = {k: sn["fng"].get(k) for k in ("value", "label", "date")} if "value" in sn.get("fng", {}) else None
         except Exception: F["fng"] = None
+        try: F["etf"] = {k: {x: v.get(x) for x in ("date", "latest", "sum5", "days5", "streak")} for k, v in api_etf().get("assets", {}).items() if v.get("ok") and k in ("BTC", "ETH")}
+        except Exception: F["etf"] = {}
         mode, model, err = "rule", None, None
         try:
             text, model = K.grok_text(F); mode = "grok"
@@ -305,38 +337,16 @@ def api_kosatsu(regen: bool = False):
 @app.get("/")
 def index(): return FileResponse(__file__.rsplit("/", 1)[0] + "/static/index.html")
 
-SNAP = os.environ.get("SNAPSHOT_PATH", "/tmp/hl_setups_snapshot.json")
-def _load_snap():
-    try:
-        r = json.load(open(SNAP))
-        if r.get("rows") and r.get("ts"):
-            r["snapshot"] = True  # rows keep their original scan ts
-            with _lock: _cache["setups"] = (0, r)
-    except Exception: pass
-def _save_snap(r):
-    try:
-        tmp = SNAP + ".tmp"; json.dump(r, open(tmp, "w")); os.replace(tmp, SNAP)
-    except Exception: pass
-@app.get("/healthz")
-def healthz(): return {"ok": True}
 def _warm():
-    _load_snap()
-    try:  # quick first pass so a cold start is useful in ~30s
-        with _lock: have = "setups" in _cache
-        if not have:
-            r = _setups(fresh=True, limit=10)
-            if r.get("rows"):
-                with _lock:
-                    if "setups" not in _cache: _cache["setups"] = (time.time(), r)
-    except Exception: pass
     while True:
         try:
             r = _setups(fresh=True)
-            if r.get("rows"): _save_snap(r)
             if r.get("rows"):
                 with _lock: _cache["setups"] = (time.time(), r)
             macro(); fundamentals(); api_geo(); api_cn(); api_cal(); api_econ(); api_sent()
         except Exception: pass
         time.sleep(90)
 @app.on_event("startup")
-def _start(): threading.Thread(target=_warm, daemon=True).start()
+def _start():
+    threading.Thread(target=_etf_loop, daemon=True).start()
+    threading.Thread(target=_warm, daemon=True).start()

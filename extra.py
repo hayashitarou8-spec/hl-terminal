@@ -128,3 +128,69 @@ def etf():
     if not rows: raise RuntimeError("parse")
     rows = rows[-15:]
     return {"ts": iso(), "rows": rows, "src": "Farside Investors (US$m)"}
+
+# ===== v5: 現物ETFフロー（Farside Investors, US$m） =====
+ETF_PAGES = [  # asset, url, label
+    ("BTC", "https://farside.co.uk/btc/", "米国 BTC現物ETF"),
+    ("ETH", "https://farside.co.uk/eth/", "米国 ETH現物ETF"),
+    ("SOL", "https://farside.co.uk/sol/", "米国 SOL現物ETF"),
+    ("HYPE", "https://farside.co.uk/hyp/", "米国 HYPE現物ETF"),
+]
+_DATE = re.compile(r"^\d{1,2} [A-Z][a-z]{2} \d{4}$")
+def _num(v):
+    v = v.replace(",", "").replace("*", "").strip()
+    if v in ("", "-", "—"): return None
+    neg = v.startswith("(") and v.endswith(")"); v = v.strip("()")
+    try: return (-1 if neg else 1) * float(v)
+    except ValueError: return None
+def farside_table(url):
+    s = get(url, ua="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15").decode("utf-8", "ignore")
+    rows = [[html.unescape(re.sub(r"<[^>]+>", "", x)).strip() for x in re.findall(r"<t[dh][^>]*>.*?</t[dh]>", tr, re.S)] for tr in re.findall(r"<tr[^>]*>(.*?)</tr>", s, re.S)]
+    hdr, data, cum = None, [], None
+    for c in rows:
+        if not c: continue
+        if not data and len(c) > 2 and sum(bool(re.fullmatch(r"[A-Z]{2,6}", x)) for x in c[1:]) >= 2:
+            hdr = c[1:]  # fund tickers (+ maybe trailing Total/'' column)
+        elif _DATE.match(c[0]) and hdr:
+            vals = [_num(x) for x in c[1:]]
+            funds = {}
+            for i, t in enumerate(hdr):
+                if re.fullmatch(r"[A-Z]{2,6}", t) and i < len(vals) - 1: funds[t] = vals[i]
+            total = vals[-1] if vals else None
+            d = dt.datetime.strptime(c[0], "%d %b %Y").strftime("%Y-%m-%d")
+            data.append({"date": d, "total": total, "funds": funds, "missing": [k for k, v in funds.items() if v is None]})
+        elif c[0] == "Total" and data:
+            cum = _num(c[-1])
+    if not hdr or not data: raise RuntimeError("parse")
+    return data, cum, [t for t in hdr if re.fullmatch(r"[A-Z]{2,6}", t)]
+def etf_asset(asset, url, label):
+    data, cum, tickers = farside_table(url)
+    done = [r for r in data if r["total"] is not None]
+    if not done: raise RuntimeError("no rows")
+    last = done[-1]; hist = done[-10:]; d5 = done[-5:]
+    s5 = sum(r["total"] for r in d5)
+    f5 = {}
+    for r in d5:
+        for k, v in r["funds"].items():
+            if v is not None: f5[k] = f5.get(k, 0.0) + v
+    top_last = sorted([(k, v) for k, v in last["funds"].items() if v], key=lambda kv: -abs(kv[1]))[:4]
+    top5 = sorted([(k, v) for k, v in f5.items() if abs(v) >= 0.05], key=lambda kv: -abs(kv[1]))[:4]
+    streak = 0
+    sign = (last["total"] > 0) - (last["total"] < 0)
+    for r in reversed(done):
+        if sign and ((r["total"] > 0) - (r["total"] < 0)) == sign: streak += 1
+        else: break
+    R = lambda v: None if v is None else round(v, 1)
+    return {"asset": asset, "label": label, "ok": True, "date": last["date"], "latest": R(last["total"]),
+            "partial": bool(last["missing"]) and len(last["missing"]) < len(last["funds"]),
+            "sum5": R(s5), "days5": len(d5), "cum": cum, "streak": streak * (sign or 1), "streakCapped": streak == len(done),
+            "hist": [{"date": r["date"], "total": r["total"]} for r in hist],
+            "topLast": [{"t": k, "v": R(v)} for k, v in top_last], "top5": [{"t": k, "v": R(v)} for k, v in top5],
+            "nFunds": len(tickers), "src": "Farside Investors", "url": url}
+def etf_all():
+    out = {}
+    for asset, url, label in ETF_PAGES:
+        try: out[asset] = etf_asset(asset, url, label)
+        except Exception as e: out[asset] = {"asset": asset, "label": label, "ok": False, "error": "データ取得不可", "why": type(e).__name__, "url": url}
+        time.sleep(0.5)
+    return {"ts": iso(), "assets": out, "unit": "US$m", "src": "Farside Investors"}
