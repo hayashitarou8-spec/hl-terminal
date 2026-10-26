@@ -6,3 +6,7 @@ shots
 __pycache__
 *.tgz
 .git
+
+.gh_token
+.access_token
+.env
